@@ -6,6 +6,7 @@
 .vscode/
 .DS_Store
 build/
+Config.json
 
 # User-specific files
 *.rsuser
