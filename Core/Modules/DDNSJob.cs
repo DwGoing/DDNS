@@ -1,8 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using Quartz;
-using DwFramework.Core;
 
 namespace Core
 {
@@ -11,9 +9,9 @@ namespace Core
     {
         private readonly DDNSService _dDNSService;
 
-        public DDNSJob()
+        public DDNSJob(DDNSService dDNSService)
         {
-            _dDNSService = ServiceHost.ServiceProvider.GetService<DDNSService>();
+            _dDNSService = dDNSService;
         }
 
         public async Task Execute(IJobExecutionContext context)

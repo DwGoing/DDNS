@@ -4,9 +4,9 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DwFramework.Core" Version="5.1.0.26"/>
+    <PackageReference Include="DwFramework.Core" Version="5.1.1"/>
+    <PackageReference Include="DwFramework.Quartz" Version="5.1.1"/>
     <PackageReference Include="Microsoft.Extensions.Http" Version="5.0.0"/>
-    <PackageReference Include="DwFramework.TaskSchedule" Version="5.1.0.26"/>
   </ItemGroup>
   <ItemGroup>
     <None Update="Config.json">

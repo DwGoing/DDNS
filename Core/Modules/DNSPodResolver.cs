@@ -1,7 +1,9 @@
 using System;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using DwFramework.Core;
 
@@ -17,33 +19,45 @@ namespace Core
 
         public sealed class Status
         {
-            public int Code { get; set; }
+            [JsonPropertyName("code")]
+            public string Code { get; set; }
+            [JsonPropertyName("message")]
             public string Message { get; set; }
         }
 
         public class ResultBase
         {
+            [JsonPropertyName("status")]
             public Status Status { get; set; }
         }
 
         public sealed class Domain
         {
-            public int Id { get; set; }
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+            [JsonPropertyName("status")]
             public string Name { get; set; }
         }
 
         public sealed class Record
         {
-            public int Id { get; set; }
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+            [JsonPropertyName("name")]
             public string Name { get; set; }
+            [JsonPropertyName("type")]
             public string Type { get; set; }
+            [JsonPropertyName("value")]
             public string Value { get; set; }
+            [JsonPropertyName("status")]
             public string Status { get; set; }
         }
 
         public sealed class RecordListResult : ResultBase
         {
+            [JsonPropertyName("domain")]
             public Domain Domain { get; set; }
+            [JsonPropertyName("records")]
             public Record[] Records { get; set; }
         }
 
@@ -65,28 +79,47 @@ namespace Core
         {
             var client = _httpClientFactory.CreateClient(Guid.NewGuid().ToString());
             client.DefaultRequestHeaders.Add("UserAgent", "DDNS/1.0.0");
-            var args = new Dictionary<string, string>(_commonArgs)
+            Dictionary<string, string> args = new(_commonArgs)
             {
                 { "domain", domain },
-                { "sub_domain", sudDomain }
+                { "sub_domain", sudDomain },
+                { "record_type", "A" }
             };
             var response = await client.PostAsync("https://dnsapi.cn/Record.List", new FormUrlEncodedContent(args));
             var json = await response.Content.ReadAsStringAsync();
             return json.FromJson<RecordListResult>();
         }
 
-        public async Task<string> GetCurrentIpAsync(string domain, string sudDomain)
+        private async Task<ResultBase> RecordModifyAsync(string domainId, string recordId, string subDomain, string value)
         {
-            try
+            var client = _httpClientFactory.CreateClient(Guid.NewGuid().ToString());
+            client.DefaultRequestHeaders.Add("UserAgent", "DDNS/1.0.0");
+            Dictionary<string, string> args = new(_commonArgs)
             {
-                var result = await RecordListAsync(domain, sudDomain);
-                if (result.Status.Code != 1) throw new Exception(result.Status.Message);
-                return null;
-            }
-            catch
+                { "domain_id", domainId },
+                { "record_id", recordId },
+                { "sub_domain", subDomain },
+                { "record_type", "A" },
+                { "record_line", "默认" },
+                { "value", value }
+            };
+            var response = await client.PostAsync("https://dnsapi.cn/Record.Modify", new FormUrlEncodedContent(args));
+            var json = await response.Content.ReadAsStringAsync();
+            return json.FromJson<ResultBase>();
+        }
+
+        public async Task<string> UpdateRecordAsync(string domain, string subDomain, string realIp)
+        {
+            var listResult = await RecordListAsync(domain, subDomain);
+            if (listResult.Status.Code != "1") throw new Exception(listResult.Status.Message);
+            var record = listResult.Records.Where(item => item.Status == "enable").FirstOrDefault();
+            if (record == null) throw new Exception("未找到可用的解析记录");
+            if (record.Value != realIp)
             {
-                return "";
+                var modifyResult = await RecordModifyAsync(listResult.Domain.Id, record.Id, subDomain, realIp);
+                if (modifyResult.Status.Code != "1") throw new Exception(modifyResult.Status.Message);
             }
+            return record.Value;
         }
     }
 }
